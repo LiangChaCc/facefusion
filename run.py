@@ -4,7 +4,7 @@ from tkinter.filedialog import askopenfilename
 import PIL
 from PIL import ImageTk
 import cv2
-import matplotlib.pyplot as plt  ###如无则pip安装
+import matplotlib.pyplot as plt
 from yolov8face import YOLOface_8n
 from face_68landmarks import face_68_landmarks
 from face_recognizer import face_recognize
@@ -31,22 +31,35 @@ def main():
     target_path = path2_
     source_img = cv2.imread(source_path)
     target_img = cv2.imread(target_path)
-
+    # 使用 YOLOv8 模型检测人脸
     detect_face_net = YOLOface_8n("weights/yoloface_8n.onnx")
+    # 使用 2D Fan 模型检测 68 个人脸关键点
     detect_68landmarks_net = face_68_landmarks("weights/2dfan4.onnx")
+    # 使用 ArcFace 模型提取人脸特征
     face_embedding_net = face_recognize('weights/arcface_w600k_r50.onnx')
+    # 初始化人脸置换模型
     swap_face_net = swap_face('weights/inswapper_128.onnx')
+    # 初始化人脸增强模型
     enhance_face_net = enhance_face('weights/gfpgan_1.4.onnx')
-
-    boxes, _, _ = detect_face_net.detect(source_img)
-    position = 0  ###一张图片里可能有多个人脸，这里只考虑1个人脸的情况
-    bounding_box = boxes[position]
+    boxes = None
+    bounding_box = None
+    try:
+        # 检测源图像中的人脸
+        boxes, _, _ = detect_face_net.detect(source_img)
+        position = 0  # 一张图片里可能有多个人脸，这里只考虑1个人脸的情况
+        bounding_box = boxes[position]
+    except:
+        messagebox.showinfo("提示", '第1张照片中未检测到人脸')
+        return
     _, face_landmark_5of68 = detect_68landmarks_net.detect(source_img, bounding_box)
     source_face_embedding, _ = face_embedding_net.detect(source_img, face_landmark_5of68)
-
-    boxes, _, _ = detect_face_net.detect(target_img)
-    position = 0  ###一张图片里可能有多个人脸，这里只考虑1个人脸的情况
-    bounding_box = boxes[position]
+    try:
+        boxes, _, _ = detect_face_net.detect(target_img)
+        position = 0  # 一张图片里可能有多个人脸，这里只考虑1个人脸的情况
+        bounding_box = boxes[position]
+    except:
+        messagebox.showinfo("提示", '第2张照片中未检测到人脸')
+        return
     _, target_landmark_5 = detect_68landmarks_net.detect(target_img, bounding_box)
 
     swapimg = swap_face_net.process(target_img, source_face_embedding, target_landmark_5)
